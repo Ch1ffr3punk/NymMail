@@ -1,0 +1,11 @@
+{
+  "server_addr": "example.onion",
+  "port": "22",
+  "username": "your_username",
+  "password": "your_password",
+  "remote_dir": "received",
+  "local_dir": "downloads",
+  "proxy_addr": "127.0.0.1:1080",
+  "proxy_type": "socks5",
+  "use_proxy": true
+}
