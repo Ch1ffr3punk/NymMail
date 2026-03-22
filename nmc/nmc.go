@@ -76,7 +76,7 @@ func main() {
 		fmt.Println("  Send: nmc -t <recipient1,recipient2,...> [-c nmc.json] [-p] <file>")
 		fmt.Println("  Init: nmc -init")
 		fmt.Println("\nRecipients can be nym addresses or aliases from config file")
-		fmt.Println("Example: client -t bob@mix.nym,alice@mix.nym file.txt")
+		fmt.Println("Example: client -t alice@mix.nym,bob@mix.nym file.txt")
 		os.Exit(1)
 	}
 
