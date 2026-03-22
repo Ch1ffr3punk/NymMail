@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -33,19 +34,25 @@ var manifest []byte
 
 func init() {
 	if os.Getenv("GO_WANT_HELP") == "1" {
-		fmt.Println("Legitimate file - oget")
+		fmt.Println("Legitimate file - get")
 		os.Exit(0)
 	}
 }
 
 func main() {
-	configFile := flag.String("c", "get.json", "Path to config file")
+	configFile := flag.String("c", "", "Path to config file (searches in home directory if not specified)")
 	proxyOverride := flag.String("proxy", "", "Override proxy address (e.g., 127.0.0.1:9050 or 127.0.0.1:1080)")
 	noProxy := flag.Bool("no-proxy", false, "Disable proxy and use direct connection")
 	proxyType := flag.String("proxy-type", "auto", "Proxy type: auto, socks5, tor, or direct")
 	flag.Parse()
 
-	config, err := loadConfig(*configFile)
+	// Find config file path
+	configPath, err := findConfigPath(*configFile)
+	if err != nil {
+		log.Fatalf("Failed to find config file: %v", err)
+	}
+
+	config, err := loadConfig(configPath)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
@@ -92,6 +99,83 @@ func main() {
 	}
 }
 
+// findConfigPath locates the configuration file in cross-platform locations
+func findConfigPath(userProvidedPath string) (string, error) {
+	// If user provided a specific path, use it
+	if userProvidedPath != "" {
+		return userProvidedPath, nil
+	}
+
+	// Get home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	// Define possible config file names
+	configNames := []string{"get.json", "config.json", ".get.json"}
+	
+	// Define search locations based on OS
+	var searchPaths []string
+	
+	switch runtime.GOOS {
+	case "android":
+		// Android typically stores app data in /sdcard or /storage/emulated/0
+		searchPaths = []string{
+			filepath.Join(homeDir, "Documents"),
+			filepath.Join(homeDir, "Download"),
+			homeDir,
+			"/sdcard",
+			"/storage/emulated/0",
+		}
+	case "ios":
+		// iOS sandboxed environment
+		searchPaths = []string{
+			homeDir,
+			filepath.Join(homeDir, "Documents"),
+		}
+	case "windows":
+		// Windows paths
+		searchPaths = []string{
+			homeDir,
+			filepath.Join(homeDir, "Documents"),
+			filepath.Join(homeDir, "AppData", "Roaming", "get"),
+			filepath.Join(homeDir, ".get"),
+		}
+	case "darwin":
+		// macOS
+		searchPaths = []string{
+			homeDir,
+			filepath.Join(homeDir, "Documents"),
+			filepath.Join(homeDir, ".get"),
+			filepath.Join(homeDir, "Library", "Application Support", "get"),
+		}
+	default:
+		// Linux and others (including Termux on Android)
+		searchPaths = []string{
+			homeDir,
+			filepath.Join(homeDir, ".config", "get"),
+			filepath.Join(homeDir, ".get"),
+			filepath.Join(homeDir, "Documents"),
+		}
+	}
+
+	// Search for config file in all locations
+	for _, searchPath := range searchPaths {
+		for _, configName := range configNames {
+			configPath := filepath.Join(searchPath, configName)
+			if _, err := os.Stat(configPath); err == nil {
+				fmt.Printf("Found config file: %s\n", configPath)
+				return configPath, nil
+			}
+		}
+	}
+
+	// If no config found, return default path in home directory
+	defaultPath := filepath.Join(homeDir, "get.json")
+	return defaultPath, fmt.Errorf("config file not found. Please create one at: %s", defaultPath)
+}
+
 // detectProxyType determines the proxy type based on the port number
 func detectProxyType(proxyAddr string) string {
 	_, port, err := net.SplitHostPort(proxyAddr)
@@ -133,6 +217,12 @@ func loadConfig(filename string) (*Config, error) {
 		config.LocalDir = "downloads"
 	}
 	
+	// Expand tilde and environment variables in paths
+	config.LocalDir, err = expandPath(config.LocalDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand local dir path: %w", err)
+	}
+	
 	// Proxy defaults: if ProxyAddr is set, proxy will be used
 	if config.ProxyAddr == "" {
 		config.UseProxy = false
@@ -151,6 +241,27 @@ func loadConfig(filename string) (*Config, error) {
 
 	config.RemoteDir = strings.ReplaceAll(config.RemoteDir, `\`, "/")
 	return &config, nil
+}
+
+// expandPath expands tilde to home directory and environment variables
+func expandPath(path string) (string, error) {
+	if path == "" {
+		return path, nil
+	}
+	
+	// Expand ~ to home directory
+	if strings.HasPrefix(path, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get home directory: %w", err)
+		}
+		path = filepath.Join(homeDir, path[1:])
+	}
+	
+	// Expand environment variables
+	path = os.ExpandEnv(path)
+	
+	return path, nil
 }
 
 // connectWithProxy establishes an SSH connection either through a proxy or directly
