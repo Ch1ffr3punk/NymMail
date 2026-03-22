@@ -393,6 +393,8 @@ func createDummyConfig(configFile string) error {
 	dummyConfig := Config{
 		Aliases: map[string]string{
 			"ch1ffr3punk@mix.nym": "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
+			"alice@nym.example": "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
+			"bob@nym.example": "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
 		},
 	}
 
