@@ -56,9 +56,9 @@ func main() {
 	var createConfig bool
 
 	flag.StringVar(&recipients, "t", "", "Recipient(s) - comma separated (nym addresses or aliases)")
-	flag.StringVar(&configFile, "c", "", "Config file path (default: platform-specific config directory/nmc.json)")
+	flag.StringVar(&configFile, "c", "", "Config file path (default: platform-specific config directory or current directory)")
 	flag.BoolVar(&parallel, "p", false, "Send to multiple recipients in parallel (default: sequential)")
-	flag.BoolVar(&createConfig, "init", false, "Create a dummy config file with placeholder aliases")
+	flag.BoolVar(&createConfig, "init", false, "Create a dummy config file with placeholder aliases (uses -c if specified)")
 	flag.Parse()
 
 	if createConfig {
@@ -74,7 +74,7 @@ func main() {
 	if recipients == "" {
 		fmt.Println("Usage:")
 		fmt.Println("  Send: nmc -t <recipient1,recipient2,...> [-c nmc.json] [-p] <file>")
-		fmt.Println("  Init: nmc -init")
+		fmt.Println("  Init: nmc -init [-c nmc.json]")
 		fmt.Println("\nRecipients can be nym addresses or aliases from config file")
 		fmt.Println("Example: client -t alice@mix.nym,bob@mix.nym file.txt")
 		os.Exit(1)
@@ -361,9 +361,18 @@ func formatBytes(bytes int64) string {
 }
 
 func getConfigPath(configFile string) string {
+	// If config file path is specified, use it directly
 	if configFile != "" {
 		return configFile
 	}
+	
+	// First, try the current directory (for portability)
+	cwdConfig := filepath.Join(".", configFileName)
+	if _, err := os.Stat(cwdConfig); err == nil {
+		return cwdConfig
+	}
+	
+	// If not found in current directory, fall back to platform-specific config directory
 	configDir := getConfigDir()
 	return filepath.Join(configDir, configFileName)
 }
@@ -385,6 +394,14 @@ func getConfigDir() string {
 
 func createDummyConfig(configFile string) error {
 	configPath := getConfigPath(configFile)
+	
+	// If configFile is specified, we should use the exact path they provided
+	// getConfigPath might change the behavior if the file exists in the current directory
+	// So we need to handle the -init with -c case specially
+	if configFile != "" {
+		configPath = configFile
+	}
+	
 	configDir := filepath.Dir(configPath)
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return fmt.Errorf("creating config directory: %v", err)
@@ -393,8 +410,8 @@ func createDummyConfig(configFile string) error {
 	dummyConfig := Config{
 		Aliases: map[string]string{
 			"ch1ffr3punk@mix.nym": "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
-			"alice@nym.example": "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
-			"bob@nym.example": "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
+			"alice@nym.example":   "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
+			"bob@nym.example":     "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
 		},
 	}
 
