@@ -21,6 +21,8 @@ const (
 	maxFileSize       = 24 * 1024 * 1024
 	nymClientPort     = "1977"
 	configFileName    = "nmc.json"
+	maxRetries        = 3
+	retryDelay        = 1 * time.Second
 )
 
 type FileInfo struct {
@@ -47,6 +49,63 @@ type TransferResult struct {
 
 type Config struct {
 	Aliases map[string]string `json:"aliases"`
+}
+
+// ConnectionPool manages a single shared connection for multiple transfers
+type ConnectionPool struct {
+	conn *websocket.Conn
+	mu   sync.Mutex
+}
+
+var pool = &ConnectionPool{}
+
+func (p *ConnectionPool) getConnection() (*websocket.Conn, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// If we have a connection, check if it's still alive
+	if p.conn != nil {
+		// Try a simple ping to check if connection is alive
+		err := p.conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(5*time.Second))
+		if err == nil {
+			return p.conn, nil
+		}
+		// Connection is dead, close it
+		p.conn.Close()
+		p.conn = nil
+	}
+
+	// Create new connection with retries
+	var conn *websocket.Conn
+	var err error
+	
+	for i := 0; i < maxRetries; i++ {
+		conn, _, err = websocket.DefaultDialer.Dial("ws://localhost:"+nymClientPort, nil)
+		if err == nil {
+			p.conn = conn
+			return conn, nil
+		}
+		
+		if i < maxRetries-1 {
+			time.Sleep(retryDelay)
+		}
+	}
+	
+	return nil, fmt.Errorf("connecting to nym-client after %d attempts: %v", maxRetries, err)
+}
+
+func (p *ConnectionPool) releaseConnection() {
+	// Don't actually close - keep it for reuse
+	// The connection will be checked on next use
+}
+
+func (p *ConnectionPool) close() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.conn != nil {
+		p.conn.Close()
+		p.conn = nil
+	}
 }
 
 func main() {
@@ -128,8 +187,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("[INFO] Sending to %d recipient(s)\n", len(resolvedRecipients))
-	for i, r := range resolvedRecipients {
+	// Deduplicate recipients (send to same address only once)
+	uniqueRecipients := deduplicateRecipients(resolvedRecipients)
+	
+	if len(uniqueRecipients) < len(resolvedRecipients) {
+		fmt.Printf("[INFO] Deduplicated %d recipients to %d unique addresses\n", 
+			len(resolvedRecipients), len(uniqueRecipients))
+	}
+
+	fmt.Printf("[INFO] Sending to %d recipient(s)\n", len(uniqueRecipients))
+	for i, r := range uniqueRecipients {
 		shortAddr := r
 		if len(r) > 20 {
 			shortAddr = r[:20] + "..."
@@ -138,13 +205,29 @@ func main() {
 	}
 	fmt.Printf("[INFO] File: %s (%s)\n", filepath.Base(filePath), formatBytes(fileInfo.Size()))
 
+	// Ensure connection pool is closed when done
+	defer pool.close()
+
 	if parallel {
 		fmt.Printf("[INFO] Sending in parallel mode\n")
-		sendToMultipleRecipientsParallel(resolvedRecipients, filePath)
+		sendToMultipleRecipientsParallel(uniqueRecipients, filePath)
 	} else {
 		fmt.Printf("[INFO] Sending in sequential mode\n")
-		sendToMultipleRecipientsSequential(resolvedRecipients, filePath)
+		sendToMultipleRecipientsSequential(uniqueRecipients, filePath)
 	}
+}
+
+func deduplicateRecipients(recipients []string) []string {
+	seen := make(map[string]bool)
+	result := make([]string, 0, len(recipients))
+	
+	for _, r := range recipients {
+		if !seen[r] {
+			seen[r] = true
+			result = append(result, r)
+		}
+	}
+	return result
 }
 
 func sendToMultipleRecipientsSequential(recipients []string, filePath string) {
@@ -227,17 +310,38 @@ func sendToMultipleRecipientsParallel(recipients []string, filePath string) {
 }
 
 func sendToRecipient(recipient string, filePath string) error {
-	conn, _, err := websocket.DefaultDialer.Dial("ws://localhost:"+nymClientPort, nil)
+	// Get connection from pool (shared across all recipients)
+	conn, err := pool.getConnection()
 	if err != nil {
-		return fmt.Errorf("connecting to nym-client: %v", err)
+		return err
 	}
-	defer conn.Close()
-
+	
+	// We need to ensure each recipient gets their own handshake
+	// But since we're reusing the connection, we need to do the selfAddress query
+	// for each recipient separately while keeping the connection alive
+	
 	req, _ := json.Marshal(map[string]string{"type": "selfAddress"})
-	conn.WriteMessage(websocket.TextMessage, req)
+	if err := conn.WriteMessage(websocket.TextMessage, req); err != nil {
+		// Connection might be dead, force reconnection on next use
+		pool.mu.Lock()
+		if pool.conn == conn {
+			pool.conn = nil
+		}
+		pool.mu.Unlock()
+		return fmt.Errorf("sending selfAddress request: %v", err)
+	}
 
 	var resp map[string]interface{}
-	conn.ReadJSON(&resp)
+	conn.SetReadDeadline(time.Now().Add(connectionTimeout))
+	if err := conn.ReadJSON(&resp); err != nil {
+		pool.mu.Lock()
+		if pool.conn == conn {
+			pool.conn = nil
+		}
+		pool.mu.Unlock()
+		return fmt.Errorf("reading selfAddress response: %v", err)
+	}
+	conn.SetReadDeadline(time.Time{})
 
 	if err := sendFile(conn, recipient, filePath); err != nil {
 		return fmt.Errorf("sending file: %v", err)
@@ -361,18 +465,15 @@ func formatBytes(bytes int64) string {
 }
 
 func getConfigPath(configFile string) string {
-	// If config file path is specified, use it directly
 	if configFile != "" {
 		return configFile
 	}
 	
-	// First, try the current directory (for portability)
 	cwdConfig := filepath.Join(".", configFileName)
 	if _, err := os.Stat(cwdConfig); err == nil {
 		return cwdConfig
 	}
 	
-	// If not found in current directory, fall back to platform-specific config directory
 	configDir := getConfigDir()
 	return filepath.Join(configDir, configFileName)
 }
@@ -395,9 +496,6 @@ func getConfigDir() string {
 func createDummyConfig(configFile string) error {
 	configPath := getConfigPath(configFile)
 	
-	// If configFile is specified, we should use the exact path they provided
-	// getConfigPath might change the behavior if the file exists in the current directory
-	// So we need to handle the -init with -c case specially
 	if configFile != "" {
 		configPath = configFile
 	}
@@ -410,8 +508,8 @@ func createDummyConfig(configFile string) error {
 	dummyConfig := Config{
 		Aliases: map[string]string{
 			"ch1ffr3punk@mix.nym": "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
-			"alice@nym.example":   "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
-			"bob@nym.example":     "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
+			"alice@mix.nym":   "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
+			"bob@mix.nym":     "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
 		},
 	}
 

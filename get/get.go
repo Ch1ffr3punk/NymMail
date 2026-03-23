@@ -19,15 +19,15 @@ import (
 )
 
 type Config struct {
-	ServerAddr string `json:"server_addr"` // Can be onion address, Nym address, or clearnet IP/hostname
-	Port       string `json:"port"`
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	RemoteDir  string `json:"remote_dir"`
-	LocalDir   string `json:"local_dir"`
-	ProxyAddr  string `json:"proxy_addr"`
-	ProxyType  string `json:"proxy_type"` // "socks5", "tor", or "" for no proxy
-	UseProxy   bool   `json:"use_proxy"`   // explicit control over proxy usage
+	ServerAddr string  `json:"server_addr"` // Can be onion address, Nym address, or clearnet IP/hostname
+	Port       string  `json:"port"`
+	Username   string  `json:"username"`
+	Password   string  `json:"password"`
+	RemoteDir  string  `json:"remote_dir"`
+	LocalDir   string  `json:"local_dir"`
+	ProxyAddr  string  `json:"proxy_addr"`
+	ProxyType  string  `json:"proxy_type"` // "socks5", "tor", or "" for no proxy
+	UseProxy   *bool   `json:"use_proxy"`   // Pointer to distinguish between explicit false and unset
 }
 
 var manifest []byte
@@ -59,10 +59,10 @@ func main() {
 
 	// Command line overrides for proxy settings
 	if *noProxy {
-		config.UseProxy = false
+		config.UseProxy = boolPtr(false)
 		config.ProxyAddr = ""
 	} else if *proxyOverride != "" {
-		config.UseProxy = true
+		config.UseProxy = boolPtr(true)
 		config.ProxyAddr = *proxyOverride
 		// Auto-detect proxy type based on port if not explicitly specified
 		if *proxyType != "auto" {
@@ -71,12 +71,12 @@ func main() {
 	} else if *proxyType != "auto" {
 		config.ProxyType = *proxyType
 		if config.ProxyType == "direct" {
-			config.UseProxy = false
+			config.UseProxy = boolPtr(false)
 		}
 	}
 
 	// Auto-detect proxy type based on port
-	if config.UseProxy && config.ProxyType == "auto" {
+	if getBoolValue(config.UseProxy) && config.ProxyType == "auto" {
 		config.ProxyType = detectProxyType(config.ProxyAddr)
 		fmt.Printf("Auto-detected proxy type: %s\n", config.ProxyType)
 	}
@@ -106,6 +106,12 @@ func findConfigPath(userProvidedPath string) (string, error) {
 		return userProvidedPath, nil
 	}
 
+	// Get current working directory
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current directory: %w", err)
+	}
+
 	// Get home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -118,46 +124,49 @@ func findConfigPath(userProvidedPath string) (string, error) {
 	// Define search locations based on OS
 	var searchPaths []string
 	
+	// ALWAYS search current directory first for portability
+	searchPaths = append(searchPaths, currentDir)
+	
 	switch runtime.GOOS {
 	case "android":
 		// Android typically stores app data in /sdcard or /storage/emulated/0
-		searchPaths = []string{
+		searchPaths = append(searchPaths, []string{
 			filepath.Join(homeDir, "Documents"),
 			filepath.Join(homeDir, "Download"),
 			homeDir,
 			"/sdcard",
 			"/storage/emulated/0",
-		}
+		}...)
 	case "ios":
 		// iOS sandboxed environment
-		searchPaths = []string{
+		searchPaths = append(searchPaths, []string{
 			homeDir,
 			filepath.Join(homeDir, "Documents"),
-		}
+		}...)
 	case "windows":
 		// Windows paths
-		searchPaths = []string{
+		searchPaths = append(searchPaths, []string{
 			homeDir,
 			filepath.Join(homeDir, "Documents"),
 			filepath.Join(homeDir, "AppData", "Roaming", "get"),
 			filepath.Join(homeDir, ".get"),
-		}
+		}...)
 	case "darwin":
 		// macOS
-		searchPaths = []string{
+		searchPaths = append(searchPaths, []string{
 			homeDir,
 			filepath.Join(homeDir, "Documents"),
 			filepath.Join(homeDir, ".get"),
 			filepath.Join(homeDir, "Library", "Application Support", "get"),
-		}
+		}...)
 	default:
 		// Linux and others (including Termux on Android)
-		searchPaths = []string{
+		searchPaths = append(searchPaths, []string{
 			homeDir,
 			filepath.Join(homeDir, ".config", "get"),
 			filepath.Join(homeDir, ".get"),
 			filepath.Join(homeDir, "Documents"),
-		}
+		}...)
 	}
 
 	// Search for config file in all locations
@@ -173,7 +182,7 @@ func findConfigPath(userProvidedPath string) (string, error) {
 
 	// If no config found, return default path in home directory
 	defaultPath := filepath.Join(homeDir, "get.json")
-	return defaultPath, fmt.Errorf("config file not found. Please create one at: %s", defaultPath)
+	return defaultPath, fmt.Errorf("config file not found. Please create one at: %s (or place get.json in the current directory)", defaultPath)
 }
 
 // detectProxyType determines the proxy type based on the port number
@@ -223,15 +232,20 @@ func loadConfig(filename string) (*Config, error) {
 		return nil, fmt.Errorf("failed to expand local dir path: %w", err)
 	}
 	
-	// Proxy defaults: if ProxyAddr is set, proxy will be used
+	// Proxy logic: respect explicit configuration
+	// UseProxy is a pointer to distinguish between:
+	// - nil: not set in config (use backward compatibility)
+	// - true/false: explicitly set by user
 	if config.ProxyAddr == "" {
-		config.UseProxy = false
+		// No proxy address configured, force proxy off
+		config.UseProxy = boolPtr(false)
 	} else {
-		// If ProxyAddr is set in config but UseProxy is not explicitly false
-		if !config.UseProxy && config.ProxyAddr != "" {
-			// For backward compatibility: if ProxyAddr exists, assume it should be used
-			config.UseProxy = true
+		// Proxy address is configured
+		if config.UseProxy == nil {
+			// Not explicitly set in config, enable proxy by default (backward compatibility)
+			config.UseProxy = boolPtr(true)
 		}
+		// If UseProxy is explicitly set (true or false), we respect the user's choice
 	}
 	
 	// Proxy type default
@@ -278,7 +292,7 @@ func connectWithProxy(config *Config) (*ssh.Client, error) {
 	var conn net.Conn
 	var err error
 
-	if !config.UseProxy {
+	if !getBoolValue(config.UseProxy) {
 		// Direct connection without proxy
 		fmt.Println("Using direct connection (no proxy)")
 		conn, err = net.DialTimeout("tcp", net.JoinHostPort(config.ServerAddr, config.Port), 2*time.Minute)
@@ -386,4 +400,17 @@ func transferFile(client *sftp.Client, remotePath, localPath string) error {
 		return fmt.Errorf("copy failed: %w", err)
 	}
 	return nil
+}
+
+// boolPtr returns a pointer to a bool value
+func boolPtr(b bool) *bool {
+	return &b
+}
+
+// getBoolValue safely returns the bool value from a pointer, defaulting to false if nil
+func getBoolValue(b *bool) bool {
+	if b == nil {
+		return false
+	}
+	return *b
 }
