@@ -5,13 +5,18 @@ NymMail\NymMail.json: 64518b74a0b525bc5d31ec9957c3d071fc0acbe0
 NymMail\NymMail.png: 29348a166bb3fa5b46c044edfba58a6c373d2660
 NymMail\go.mod: b9e5c118d723d3ca557e11afe17b0e52a9429cdb
 NymMail\go.sum: 6d4ce062b38a6a1f435f7e2eebf314c9f9bbb266
-enc\enc.go: 0774193aed01b5bebd3a17d9ce17e614b24e69a6
-enc\enc.png: 654b340d85bf6e8616208c8dd93e819909e65406
-enc\go.mod: c23692e383b3a17cdeed8c2ddc1a377f8e485c34
-enc\go.sum: 8b42e677a871cf8e023a23dbfcfb9fcb31ae0674
+enc-linux\enc.go: e17d9d03dcebf52cfed0afe885141d0da8f2d0fa
+enc-linux\enc.png: 654b340d85bf6e8616208c8dd93e819909e65406
+enc-linux\go.mod: c23692e383b3a17cdeed8c2ddc1a377f8e485c34
+enc-linux\go.sum: 8b42e677a871cf8e023a23dbfcfb9fcb31ae0674
+enc-linux\merkle-tree.txt: b2acb64571300eba59c0c253934c70ad54bef485
+enc-windows\enc.go: 0774193aed01b5bebd3a17d9ce17e614b24e69a6
+enc-windows\enc.png: 654b340d85bf6e8616208c8dd93e819909e65406
+enc-windows\go.mod: c23692e383b3a17cdeed8c2ddc1a377f8e485c34
+enc-windows\go.sum: 8b42e677a871cf8e023a23dbfcfb9fcb31ae0674
 nms\go.mod: ed3cde766f63607b98630fadeefb03f4e754443e
 nms\go.sum: a2c31bb27affdaf092bcd4f79d63c629088e9e31
 nms\nms.go: bb50c721608516af322f194fb93ae28bcbd317aa
 
 --- ROOT HASH (RIPEMD-160) ---
-b8f0bb8f8924c4dcbc05ff2105fa68390746ab88
+0447d464e004c2296a9157a260ec581a8a6b8ac3
