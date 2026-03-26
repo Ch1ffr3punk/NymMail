@@ -1,0 +1,10 @@
+{
+  "home_server": "your_server_nym_address",
+  "password": "",
+  "local_dir": "inbox",
+  "aliases": {
+    "alice@mix.nym": "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
+    "bob@mix.nym": "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx",
+    "ch1ffr3punk@mix.nym": "83D4Uc5R2dL2eomXdn8hXz99e3yBFXG57XprphFTcx8s.HGV4Tn5mJMvU9gx6p6dBdBtLQbxdJXS1QQvUxUDDy2t@7SnUJy4rWH9hXCitpgwx7XoK5PGRBNjaiz7BWeaqRfXx"
+  }
+}
