@@ -595,6 +595,12 @@ func handleFileInfo(message, outputDir string, currentFile **os.File,
 
 	logDebug("File info: name=%s, size=%d, chunks=%d", fileInfo.Name, fileInfo.Size, fileInfo.Chunks)
 
+	// Add this check to reject zero-byte files
+	if fileInfo.Size <= 0 {
+		logReject("%s - zero-byte file rejected", fileInfo.Name)
+		return
+	}
+
 	if fileInfo.Size > maxFileSize {
 		logReject("%s - size %s exceeds limit %s",
 			fileInfo.Name, formatBytes(fileInfo.Size), formatBytes(maxFileSize))
