@@ -1,8 +1,0 @@
---- FILE HASHES (RIPEMD-160) ---
-enc.go: e17d9d03dcebf52cfed0afe885141d0da8f2d0fa
-enc.png: 654b340d85bf6e8616208c8dd93e819909e65406
-go.mod: c23692e383b3a17cdeed8c2ddc1a377f8e485c34
-go.sum: 8b42e677a871cf8e023a23dbfcfb9fcb31ae0674
-
---- ROOT HASH (RIPEMD-160) ---
-87bf070a3d25103c8948143dc950f326fa0882c2
