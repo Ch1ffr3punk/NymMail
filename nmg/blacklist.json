@@ -1,0 +1,8 @@
+{
+    "blocked_emails": [
+        "spam@example.com",
+        "unerwuenscht@example.org",
+        "blocked@domain.de",
+        "test@mail.com"
+    ]
+}

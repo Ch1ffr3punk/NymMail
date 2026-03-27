@@ -9,14 +9,17 @@ enc-linux\enc.go: e17d9d03dcebf52cfed0afe885141d0da8f2d0fa
 enc-linux\enc.png: 654b340d85bf6e8616208c8dd93e819909e65406
 enc-linux\go.mod: c23692e383b3a17cdeed8c2ddc1a377f8e485c34
 enc-linux\go.sum: 8b42e677a871cf8e023a23dbfcfb9fcb31ae0674
-enc-linux\merkle-tree.txt: b2acb64571300eba59c0c253934c70ad54bef485
 enc-windows\enc.go: 0774193aed01b5bebd3a17d9ce17e614b24e69a6
 enc-windows\enc.png: 654b340d85bf6e8616208c8dd93e819909e65406
 enc-windows\go.mod: c23692e383b3a17cdeed8c2ddc1a377f8e485c34
 enc-windows\go.sum: 8b42e677a871cf8e023a23dbfcfb9fcb31ae0674
+nmg\blacklist.json: 913e8296ddd7248ece60e0567c972b41a484fac5
+nmg\go.mod: 20d4c900f80b6e566845299252d5253be27f6961
+nmg\go.sum: 815ddc0f22f9e6ff36182b73d965496565b1646b
+nmg\nmg.go: d2ced9300bd10714f8e7bf662dd5aabc59e7d99b
 nms\go.mod: 63ce29bb2067a7b5f42796e188940f0aa0b9bb3b
 nms\go.sum: a2c31bb27affdaf092bcd4f79d63c629088e9e31
 nms\nms.go: 74135ef4b64917dee8ac08bd8c1d5836eae2424c
 
 --- ROOT HASH (RIPEMD-160) ---
-51252a42f1fa0da38411303d296d7fb07517929c
+c7fde398849eafffee3cc439acaf5d7a0c0c43ba
