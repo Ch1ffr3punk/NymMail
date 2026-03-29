@@ -518,7 +518,7 @@ func modifyHeaders(original []byte) []byte {
 	// Comment header with proper folding (CRLF + space for continuation)
 	// RFC 5322: folding = CRLF followed by at least one SP or HTAB
 	buffer.WriteString("Comment: This message did not originate from the sender address above.\r\n")
-	buffer.WriteString("\tIt was sent anonymously via the Nym Mixnet.\r\n")
+	buffer.WriteString("\t It was sent anonymously via the Nym Mixnet.\r\n")
 	buffer.WriteString("Contact: " + contactAddress + "\r\n")
 	
 	if hasSubject && subjectContent != "" {
