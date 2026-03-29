@@ -342,119 +342,119 @@ func generateRandomFilename() string {
 }
 
 func (g *NymMessageGUI) sendMessage() {
-	recipientsStr := strings.TrimSpace(g.toEntry.Text)
-	if recipientsStr == "" {
-		dialog.ShowError(fmt.Errorf("recipient cannot be empty"), g.window)
-		return
-	}
+    recipientsStr := strings.TrimSpace(g.toEntry.Text)
+    if recipientsStr == "" {
+        dialog.ShowError(fmt.Errorf("recipient cannot be empty"), g.window)
+        return
+    }
 
-	message := g.messageArea.Text
-	messageSize := len([]byte(message))
+    message := g.messageArea.Text
+    messageSize := len([]byte(message))
 
-	if messageSize == 0 {
-		dialog.ShowError(fmt.Errorf("message cannot be empty"), g.window)
-		return
-	}
+    if messageSize == 0 {
+        dialog.ShowError(fmt.Errorf("message cannot be empty"), g.window)
+        return
+    }
 
-	if messageSize > maxMessageSize {
-		dialog.ShowError(fmt.Errorf("message size (%d bytes) exceeds maximum allowed size of 64 KB", messageSize), g.window)
-		return
-	}
+    if messageSize > maxMessageSize {
+        dialog.ShowError(fmt.Errorf("message size (%d bytes) exceeds maximum allowed size of 64 KB", messageSize), g.window)
+        return
+    }
 
-	// Parse recipients but keep original aliases for display
-	recipientsStr = strings.TrimSpace(g.toEntry.Text)
-	parts := strings.Split(recipientsStr, ",")
-	var originalRecipients []string
-	var resolvedRecipients []string
-	var invalidRecipients []string
+    // Parse recipients but keep original aliases for display
+    recipientsStr = strings.TrimSpace(g.toEntry.Text)
+    parts := strings.Split(recipientsStr, ",")
+    var originalRecipients []string
+    var resolvedRecipients []string
+    var invalidRecipients []string
 
-	for _, part := range parts {
-		recipient := strings.TrimSpace(part)
-		if recipient == "" {
-			continue
-		}
-		
-		// Store original for display
-		originalRecipients = append(originalRecipients, recipient)
-		
-		// Resolve for sending
-		resolved, err := resolveRecipient(recipient, g.config.Aliases)
-		if err != nil {
-			invalidRecipients = append(invalidRecipients, recipient)
-		} else {
-			resolvedRecipients = append(resolvedRecipients, resolved)
-		}
-	}
+    for _, part := range parts {
+        recipient := strings.TrimSpace(part)
+        if recipient == "" {
+            continue
+        }
+        
+        // Store original for display
+        originalRecipients = append(originalRecipients, recipient)
+        
+        // Resolve for sending - only checks aliases in NymMail.json
+        resolved, err := resolveRecipient(recipient, g.config.Aliases)
+        if err != nil {
+            invalidRecipients = append(invalidRecipients, recipient)
+        } else {
+            resolvedRecipients = append(resolvedRecipients, resolved)
+        }
+    }
 
-	if len(invalidRecipients) > 0 {
-		dialog.ShowError(fmt.Errorf("invalid recipient(s): %s", strings.Join(invalidRecipients, ", ")), g.window)
-		return
-	}
+    if len(invalidRecipients) > 0 {
+        dialog.ShowError(fmt.Errorf("invalid recipient(s): %s", strings.Join(invalidRecipients, ", ")), g.window)
+        return
+    }
 
-	if len(resolvedRecipients) == 0 {
-		dialog.ShowError(fmt.Errorf("no valid recipients specified"), g.window)
-		return
-	}
+    if len(resolvedRecipients) == 0 {
+        dialog.ShowError(fmt.Errorf("no valid recipients specified"), g.window)
+        return
+    }
 
-	totalRecipients := len(resolvedRecipients)
-	
-	// Show initial status
-	g.updateStatus("Sending", fmt.Sprintf("Sending to %d recipient(s)...", totalRecipients))
+    totalRecipients := len(resolvedRecipients)
+    
+    // Show initial status
+    g.updateStatus("Sending", fmt.Sprintf("Sending to %d recipient(s)...", totalRecipients))
 
-	// Send in goroutine to not block UI
-	go func() {
-		successCount := 0
-		failCount := 0
-		var errors []string
+    // Send in goroutine to not block UI
+    go func() {
+        successCount := 0
+        failCount := 0
+        var errors []string
 
-		for i := 0; i < totalRecipients; i++ {
-			original := originalRecipients[i]
-			resolved := resolvedRecipients[i]
-			
-			// Shorten for display if needed
-			displayAddr := original
-			if len(displayAddr) > 20 {
-				displayAddr = displayAddr[:20] + "..."
-			}
-			
-			// Update status before sending
-			fyne.Do(func() {
-				g.statusLabel.SetText("Sending")
-				g.statusDetail.SetText(fmt.Sprintf("[%d/%d] Sending to %s...", i+1, totalRecipients, displayAddr))
-			})
-			
-			// Send the message using resolved address
-			err := g.sendMessageToRecipient(resolved, message)
-			
-			if err != nil {
-				failCount++
-				errors = append(errors, fmt.Sprintf("%s: %v", original, err))
-				fyne.Do(func() {
-					g.statusDetail.SetText(fmt.Sprintf("[%d/%d] Failed: %s", i+1, totalRecipients, displayAddr))
-				})
-			} else {
-				successCount++
-				fyne.Do(func() {
-					g.statusDetail.SetText(fmt.Sprintf("[%d/%d] Sent: %s", i+1, totalRecipients, displayAddr))
-				})
-			}
-			
-			// Small delay to see status
-			time.Sleep(500 * time.Millisecond)
-		}
+        for i := 0; i < totalRecipients; i++ {
+            original := originalRecipients[i]
+            resolved := resolvedRecipients[i]
+            
+            // Shorten for display if needed
+            displayAddr := original
+            if len(displayAddr) > 20 {
+                displayAddr = displayAddr[:20] + "..."
+            }
+            
+            // Update status before sending
+            fyne.Do(func() {
+                g.statusLabel.SetText("Sending")
+                g.statusDetail.SetText(fmt.Sprintf("[%d/%d] Sending to %s...", i+1, totalRecipients, displayAddr))
+            })
+            
+            // Send the message using resolved address
+            err := g.sendMessageToRecipient(resolved, message)
+            
+            if err != nil {
+                failCount++
+                errors = append(errors, fmt.Sprintf("%s: %v", original, err))
+                fyne.Do(func() {
+                    g.statusDetail.SetText(fmt.Sprintf("[%d/%d] Failed: %s", i+1, totalRecipients, displayAddr))
+                })
+            } else {
+                successCount++
+                fyne.Do(func() {
+                    g.statusDetail.SetText(fmt.Sprintf("[%d/%d] Sent: %s", i+1, totalRecipients, displayAddr))
+                })
+            }
+            
+            // Small delay to see status
+            time.Sleep(500 * time.Millisecond)
+        }
 
-		// Final status update
-		fyne.Do(func() {
-			if failCount == 0 {
-				g.statusLabel.SetText("Success")
-				g.statusDetail.SetText(fmt.Sprintf("✓ All %d messages sent successfully", successCount))
-			} else {
-				g.statusLabel.SetText("Error")
-				g.statusDetail.SetText(fmt.Sprintf("Sent: %d, Failed: %d", successCount, failCount))
-				dialog.ShowError(fmt.Errorf("failed to send to %d recipient(s):\n%s", failCount, strings.Join(errors, "\n")), g.window)
-			}
-		})
-	}()
+        // Final status update
+        fyne.Do(func() {
+            if failCount == 0 {
+                g.statusLabel.SetText("Success")
+                g.statusDetail.SetText(fmt.Sprintf("✓ All %d messages sent successfully", successCount))
+            } else {
+                g.statusLabel.SetText("Error")
+                g.statusDetail.SetText(fmt.Sprintf("Sent: %d, Failed: %d", successCount, failCount))
+                dialog.ShowError(fmt.Errorf("failed to send to %d recipient(s):\n%s", failCount, strings.Join(errors, "\n")), g.window)
+            }
+        })
+    }()
 }
 
 func (g *NymMessageGUI) sendMessageToRecipient(recipient string, message string) error {
@@ -1003,14 +1003,13 @@ func loadOrCreateUnifiedConfig() (*UnifiedConfig, error) {
 }
 
 func resolveRecipient(recipient string, aliases map[string]string) (string, error) {
-	if addr, exists := aliases[recipient]; exists {
-		return addr, nil
-	}
-	// Check if it's already a full nym address (contains @ or is long enough)
-	if strings.Contains(recipient, "@") || len(recipient) >= 50 {
-		return recipient, nil
-	}
-	return "", fmt.Errorf("unknown recipient '%s'. Use alias from config or full nym address", recipient)
+    // Look up the recipient in the aliases map
+    if addr, exists := aliases[recipient]; exists {
+        return addr, nil
+    }
+    
+    // Recipient not found in aliases - return error
+    return "", fmt.Errorf("'%s' not found in NymMail.json", recipient)
 }
 
 // Get emails functionality

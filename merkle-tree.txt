@@ -1,6 +1,6 @@
 --- FILE HASHES (RIPEMD-160) ---
 LICENSE: 304c26c26e8af4d60f1e0818baa73f8ac9b511fd
-NymMail\NymMail.go: 186f2f5af2d2d7f33a68943782706b67de6f905e
+NymMail\NymMail.go: e771a4ed42f39f410b4f5264534aaad0ecedf274
 NymMail\NymMail.json: 64518b74a0b525bc5d31ec9957c3d071fc0acbe0
 NymMail\NymMail.png: 29348a166bb3fa5b46c044edfba58a6c373d2660
 NymMail\go.mod: b9e5c118d723d3ca557e11afe17b0e52a9429cdb
@@ -22,4 +22,4 @@ nms\go.sum: a2c31bb27affdaf092bcd4f79d63c629088e9e31
 nms\nms.go: 74135ef4b64917dee8ac08bd8c1d5836eae2424c
 
 --- ROOT HASH (RIPEMD-160) ---
-e20e311c3585d0a8bc6e9f5e8e617b6b80675148
+6cafb62e50d049b7811e6f003158db125aeb9f1e
