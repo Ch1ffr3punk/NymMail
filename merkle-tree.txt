@@ -13,13 +13,12 @@ enc-windows\enc.go: 0774193aed01b5bebd3a17d9ce17e614b24e69a6
 enc-windows\enc.png: 654b340d85bf6e8616208c8dd93e819909e65406
 enc-windows\go.mod: c23692e383b3a17cdeed8c2ddc1a377f8e485c34
 enc-windows\go.sum: 8b42e677a871cf8e023a23dbfcfb9fcb31ae0674
-nmg\blacklist.json: 913e8296ddd7248ece60e0567c972b41a484fac5
 nmg\go.mod: 20d4c900f80b6e566845299252d5253be27f6961
 nmg\go.sum: 815ddc0f22f9e6ff36182b73d965496565b1646b
-nmg\nmg.go: 4f33add564f86f9fa1e8693af28b285a8b49bda4
+nmg\nmg.go: 9e6fe02c0d0baa453825f3190cf956a62ea69c61
 nms\go.mod: 63ce29bb2067a7b5f42796e188940f0aa0b9bb3b
 nms\go.sum: a2c31bb27affdaf092bcd4f79d63c629088e9e31
 nms\nms.go: 74135ef4b64917dee8ac08bd8c1d5836eae2424c
 
 --- ROOT HASH (RIPEMD-160) ---
-6cafb62e50d049b7811e6f003158db125aeb9f1e
+c39b66e04c6e2955bd2bdbb78924f19c6368c4b6
